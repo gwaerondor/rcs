@@ -1,4 +1,29 @@
 defmodule File_poller do
+
+  def start(directory) do
+    parent = self()
+    spawn(fn() ->
+      Process.register(self(), :file_poller)
+      send(parent, :started)
+      loop(directory)
+    end)
+    receive do
+      :started ->
+	:ok
+    after
+      50 ->
+    	{:error, "Couldn't start file poller"}
+    end
+  end
+
+  def loop(directory) do
+    files = list_files(directory)
+    modules = file_names_to_modules(files)
+    :io.format("Modules: ~p~n", [modules])
+    :timer.sleep(500)
+    loop(directory)
+  end
+  
   def list_files(directory) do
     case File.ls(directory) do
       {:ok, files} ->
@@ -15,5 +40,9 @@ defmodule File_poller do
 	  |> String.replace_suffix(".beam", "")
 	  |> String.replace_prefix("Elixir.", "")
     end
+  end
+
+  def modules_to_file_names(modules) do
+    
   end
 end
