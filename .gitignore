@@ -1,0 +1,7 @@
+*~
+**/#*#
+src/*.beam
+out/*
+erl_crash.dump
+_build
+.#*
