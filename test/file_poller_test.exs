@@ -4,17 +4,24 @@ defmodule File_poller_test do
   use ExUnit.Case, async: true
   import ExUnit.Assertions
   
-  test "Polling a directory should list all files" do
-    dir = "test/dummies"
-    expected = Enum.sort(["first_dummy.exs", "Elixir.Dummy.beam"])
-    result = Enum.sort(File_poller.list_files(dir))
+  test "Polling a directory should list all source files" do
+    dir = Path.absname("./test/dummies/")
+    expected = Enum.sort(["first_dummy.exs"])
+    result = Enum.sort(File_poller.list_source_files(dir))
     assert_equal(expected, result)
   end
 
-  test "Polling a non-existing directory should return an error" do
+  test "It should be possible to list all beams in the loaded directory" do
+    dir = Path.absname("./test/dummies/")
+    expected = ["Elixir.Dummy.beam"]
+    result = File_poller.list_beam_files(dir)
+    assert_equal(expected, result)
+  end
+  
+  test "Polling a non-existing directory should return an empty list" do
     dir = "../i_do_not_exist/"
-    expected = {:error, :enoent}
-    result = File_poller.list_files(dir)
+    expected = []
+    result = File_poller.list_source_files(dir)
     assert_equal(expected, result)
   end
 
@@ -58,9 +65,12 @@ defmodule File_poller_test do
     assert_equal(expected, result)
   end
 
-  @tag :skip
-  test "If an .ex or .exs is encountered, compile and load" do
-    assert false
+  test "If source files in loaded; compile and load and move the source" do
+    :ok = File.cp("test/dummies/first_dummy.exs", "loaded/first_dummy.exs")
+    assert File.exists?("loaded/first_dummy.exs")
+    File_poller.run("loaded/")
+    refute File.exists?("loaded/first_dummy.exs")
+    assert is_loaded(Dummy)
   end
 
   @tag :skip
@@ -100,4 +110,7 @@ defmodule File_poller_test do
   defp assert_not_equal(unexpected, actual) do
     assert(unexpected != actual)
   end
+
+  defp is_loaded(_), do: false
+
 end

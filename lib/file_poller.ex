@@ -5,7 +5,8 @@ defmodule File_poller do
     spawn(fn() ->
       Process.register(self(), :file_poller)
       send(parent, :started)
-      loop(directory)
+      abs_directory = Path.absname(directory)
+      loop(abs_directory)
     end)
     receive do
       :started ->
@@ -17,22 +18,35 @@ defmodule File_poller do
   end
 
   def loop(directory) do
-    files = list_files(directory)
-    modules = file_names_to_modules(files)
-    :io.format("Modules: ~p~n", [modules])
+    run(directory)
     :timer.sleep(500)
     loop(directory)
   end
+
+  def run(directory) do
+    sources = list_source_files(directory)
+    beams = list_beam_files(directory)
+    :error
+  end
   
-  def list_files(directory) do
-    case File.ls(directory) do
-      {:ok, files} ->
-	files
-      error ->
-	error
-    end
+  def list_source_files(directory) do
+    for e <- [".ex", ".exs"] do
+      list_files_with_ext(directory, e)
+    end |> Enum.concat
   end
 
+  def list_beam_files(directory) do
+    list_files_with_ext(directory, ".beam")
+  end
+
+  def list_files_with_ext(directory, ext) do
+    files = Path.join([directory, "*" <> ext])
+    |> Path.wildcard
+    for f <- files do
+      Path.basename(f)
+    end
+  end
+  
   def file_names_to_modules(file_names) do
     is_beam = &(String.ends_with?(&1, ".beam"))
     for f <- file_names, is_beam.(f) do
@@ -43,6 +57,22 @@ defmodule File_poller do
   end
 
   def modules_to_file_names(modules) do
-    
+    for m <- modules do
+      m
+      |> prepend_elixir_if_necessary
+      |> append(".beam")
+    end
   end
+
+  defp prepend_elixir_if_necessary(module_name) do
+    case String.match?(module_name, ~r/[A-Z].*/) do
+      true ->
+	"Elixir." <> module_name
+      false ->
+	module_name
+    end
+  end
+
+  defp append(string, appendage), do: string <> appendage
+
 end
