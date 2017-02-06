@@ -1,15 +1,30 @@
 defmodule File_poller do
 
   def start(directory) do
+    case file_poller_already_started?() do
+      true ->
+	{:error, "Already started"}
+      false ->
+	start_new_poller(directory)
+    end
+  end
+  
+  defp file_poller_already_started?() do
+    pre_existing = Process.whereis(:file_poller)
+    is_pid(pre_existing)
+  end
+
+  defp start_new_poller(directory) do
     parent = self()
+    ref = make_ref()
     spawn(fn() ->
       Process.register(self(), :file_poller)
-      send(parent, :started)
+      send(parent, {ref, :started})
       abs_directory = Path.absname(directory)
       loop(abs_directory)
     end)
     receive do
-      :started ->
+      {ref, :started} ->
 	:ok
     after
       50 ->
