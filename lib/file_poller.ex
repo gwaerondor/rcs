@@ -24,7 +24,7 @@ defmodule File_poller do
       loop(abs_directory)
     end)
     receive do
-      {ref, :started} ->
+      {^ref, :started} ->
 	:ok
     after
       50 ->
@@ -40,14 +40,27 @@ defmodule File_poller do
 
   def run(directory) do
     sources = list_source_files(directory)
-    beams = list_beam_files(directory)
-    :error
+    compile_and_move_source_files(sources, directory)
   end
   
   def list_source_files(directory) do
     for e <- [".ex", ".exs"] do
       list_files_with_ext(directory, e)
     end |> Enum.concat
+  end
+
+  defp compile_and_move_source_files(source_files, directory) do
+    for source <- source_files do
+      :io.format(:user, "Trying to compile ~p now to destination:~p~n", [source, directory])
+      source_file = Path.join(directory, source)
+      compile(source_file, directory)
+      dest_file = Path.join(directory, "src/#{source}")
+      File.rename(source_file, dest_file)
+    end
+  end
+
+  defp compile(source, destination) do
+    Kernel.ParallelCompiler.files_to_path([source], destination)
   end
 
   def list_beam_files(directory) do

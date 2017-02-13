@@ -92,6 +92,8 @@ defmodule File_poller_test do
     end
   end
 
+  # This test is missing proper cleanup. Why can't we just have fixtures
+  # in ExUnit, like we do in EUnit? It would be so easy... :(
   test "If source files in loaded; compile and load and move the source" do
     :ok = File.cp("test/dummies/first_dummy.exs", "loaded/first_dummy.exs")
     assert File.exists?("loaded/first_dummy.exs")
